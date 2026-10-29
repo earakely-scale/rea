@@ -57,12 +57,13 @@ export const disagreesWithCall = (
       (regenerates(rule) && call.kept.includes(rule.field)),
   );
 
-/** A plan's set rules a later call flipped back, and that call's own, as toggles; `steady` names fields a call found already set, which an action sets rather than toggles. */
+/** A plan's set rules a later call flipped back, and that call's own, as toggles; `steady` names fields a call found already set, which an action sets rather than toggles. Every earlier call must have started from a boolean too, or serving rejects the first one. */
 export const toggledRules = (
   rules: readonly FieldRule[],
   later: readonly FieldRule[],
   before: JsonObject,
   steady: ReadonlySet<string>,
+  earlier: readonly { readonly startedBoolean: ReadonlySet<string> }[],
 ): { readonly rules: FieldRule[]; readonly later: FieldRule[] } => {
   const flipped = new Set(
     later.flatMap((rule) => {
@@ -72,6 +73,7 @@ export const toggledRules = (
         typeof was === "boolean" &&
         rule.value === !was &&
         !steady.has(rule.field) &&
+        earlier.every((call) => call.startedBoolean.has(rule.field)) &&
         ((held?.rule === "set" && held.value === was) ||
           held?.rule === "toggle")
         ? [rule.field]
@@ -136,6 +138,8 @@ export interface UpdateCall {
   readonly sent: ReadonlyMap<string, JsonValue>;
   readonly sentMembers: ReadonlySet<string>;
   readonly kept: readonly string[];
+  /** Fields whose value before the call was a boolean. A toggle requires this of every call. */
+  readonly startedBoolean: ReadonlySet<string>;
 }
 
 /** How a later update's entity and the plan's calls and held entities showed `&` in the slugs it learns. */
@@ -431,6 +435,11 @@ export const rememberCall = (
     sent: scalars(call.sent),
     sentMembers: new Set(Object.keys(call.sent)),
     kept,
+    startedBoolean: new Set(
+      Object.entries(call.before).flatMap(([field, value]) =>
+        typeof value === "boolean" ? [field] : [],
+      ),
+    ),
   };
   retain(
     64 +
@@ -440,6 +449,7 @@ export const rememberCall = (
         ...facts.sent,
         [...facts.sentMembers],
         kept,
+        [...facts.startedBoolean],
       ]) *
         2,
   );

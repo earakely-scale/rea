@@ -104,16 +104,26 @@ const listReferenceRule = (
     types.add(match[0]!.type);
   }
   if (types.size !== 1) return undefined;
+  // Every recorded element must list the same fields. A union would add a key one element omitted, and an empty object lists none.
+  const [recorded, ...rest] = value.map((element) =>
+    Object.keys(element as JsonObject),
+  );
+  if (
+    recorded === undefined ||
+    recorded.length === 0 ||
+    rest.some(
+      (fields) =>
+        fields.length !== recorded.length ||
+        fields.some((field) => !recorded.includes(field)),
+    )
+  )
+    return undefined;
   return {
     field,
     rule: "reference",
     member,
     type: [...types][0]!,
-    fields: [
-      ...new Set(
-        value.flatMap((element) => Object.keys(element as JsonObject)),
-      ),
-    ],
+    fields: recorded,
     many: true,
   };
 };

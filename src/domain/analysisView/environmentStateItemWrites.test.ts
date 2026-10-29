@@ -9,7 +9,9 @@ import {
   BOOKMARK_TOGGLE_ROWS,
   CREATES_BY_TITLE_ROWS,
   ITEM_REFERENCES_ROWS,
+  NULL_THEN_STARRED_ROWS,
   RANKED_AFTER_DELETE_ROWS,
+  REFUTED_TITLE_SORT_ROWS,
   feedEntry,
 } from "../../../tests/fixtures/environmentStateItemWrites.js";
 import { environmentStateViewOf } from "../../../tests/fixtures/environmentStateWrites.js";
@@ -95,6 +97,28 @@ describe("item writes", () => {
         "put_entries_bookmark_by_id",
       ),
     ).toMatchObject({ served: false });
+  });
+
+  it("does not learn a title sort an earlier update's kept order ruled out", () => {
+    const ascending = {
+      rule: "sorted",
+      field: "title",
+      direction: "ascending",
+    };
+    const update = planOf(REFUTED_TITLE_SORT_ROWS, "patch_folders_by_id");
+    const created = planOf(REFUTED_TITLE_SORT_ROWS, "post_folders");
+    expect(update).toMatchObject({ served: true });
+    expect(update.insert).not.toEqual(ascending);
+    expect(created.insert).not.toEqual(ascending);
+  });
+
+  it("serves no toggle when an earlier call found the flag null", () => {
+    const plan = planOf(NULL_THEN_STARRED_ROWS, "put_entries_bookmark_by_id");
+    expect(plan).toMatchObject({ served: false });
+    expect(plan.rules).not.toContainEqual({
+      field: "starred",
+      rule: "toggle",
+    });
   });
 
   it("serves no toggle a call left its flag unchanged under", () => {

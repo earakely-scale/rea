@@ -1168,7 +1168,14 @@ export class EnvironmentStateWriteSimulation {
             candidate.rule === "sorted" && !same(candidate, draft.plan.insert),
         )
       : draft.candidates.slice(1);
+    // A sort an earlier update's whole list ruled out must not become this create's order: serving would move those updates by it.
+    const refuted = this.#refutedSorts.get(view.type);
     for (const candidate of options) {
+      if (
+        candidate.rule === "sorted" &&
+        refuted?.has(JSON.stringify(candidate)) === true
+      )
+        continue;
       this.#state.reinsert(view.type, line.collection, inserted, candidate);
       const outcome = this.#check(view, record);
       if (outcome?.pass === true) {

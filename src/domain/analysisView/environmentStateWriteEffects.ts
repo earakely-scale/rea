@@ -695,6 +695,7 @@ export const updateEntity = (
     fitted.explained.rules,
     entity.fields,
     draft.steady,
+    draft.updates,
   );
   const explained = { ...fitted.explained, rules: later };
   for (const member of keptOrders(call.body, after.object))

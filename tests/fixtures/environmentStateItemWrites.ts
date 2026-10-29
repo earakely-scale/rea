@@ -234,3 +234,64 @@ export const ADDED_EMPTY_REFERENCE_ROWS: readonly TimedCaptureRow[] = (() => {
     ["GET", "/api/items", [seeded, loose, filed, cleared].map(summary)],
   ];
 })();
+
+/** Renames that keep collection order, which an ascending title sort would not replay, then a create a whole list could place by title. */
+export const REFUTED_TITLE_SORT_ROWS: readonly TimedCaptureRow[] = (() => {
+  const zulu = folder(1, "Zulu");
+  const bravo = folder(2, "Bravo");
+  const alpha = folder(3, "Alpha");
+  const echo = folder(3, "Echo");
+  const able = folder(1, "Able");
+  const delta = folder(4, "Delta");
+  return [
+    ["GET", "/api/folders", [zulu, bravo, alpha]],
+    ["GET", "/api/folders/1", zulu],
+    ["GET", "/api/folders/2", bravo],
+    ["GET", "/api/folders/3", alpha],
+    ["PATCH", "/api/folders/3", echo, 200, { title: "Echo" }],
+    ["GET", "/api/folders/3", echo],
+    ["GET", "/api/folders", [zulu, bravo, echo]],
+    ["PATCH", "/api/folders/1", able, 200, { title: "Able" }],
+    ["GET", "/api/folders/1", able],
+    ["GET", "/api/folders", [able, bravo, echo]],
+    ["POST", "/api/folders", delta, 200, { title: "Delta" }],
+    ["GET", "/api/folders/4", delta],
+    ["GET", "/api/folders", [able, bravo, delta, echo]],
+  ];
+})();
+
+/** A body-less bookmark action whose first call finds `starred` null, then flips the boolean it stored. */
+export const NULL_THEN_STARRED_ROWS: readonly TimedCaptureRow[] = (() => {
+  const seeded = {
+    id: 1,
+    title: "Entry 1",
+    starred: null,
+    changed_at: "2026-10-17T17:00:00.000000Z",
+  };
+  const other = {
+    id: 2,
+    title: "Entry 2",
+    starred: false,
+    changed_at: "2026-10-17T17:00:00.000000Z",
+  };
+  const starred = {
+    ...seeded,
+    starred: true,
+    changed_at: "2026-10-17T18:00:03.120000Z",
+  };
+  const cleared = {
+    ...seeded,
+    starred: false,
+    changed_at: "2026-10-17T18:00:05.090000Z",
+  };
+  return [
+    ["GET", "/api/entries", [seeded, other]],
+    ["GET", "/api/entries/1", seeded],
+    ["GET", "/api/entries/2", other],
+    ["PUT", "/api/entries/1/bookmark", "", 204],
+    ["GET", "/api/entries/1", starred],
+    ["PUT", "/api/entries/1/bookmark", "", 204],
+    ["GET", "/api/entries/1", cleared],
+    ["GET", "/api/entries", [cleared, other]],
+  ];
+})();
