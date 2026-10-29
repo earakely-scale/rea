@@ -143,7 +143,7 @@ describe("objects that repeat the entity a member names", () => {
         "tags",
         [
           { id: "1", name: "Tools" },
-          { id: "2", name: "Winter", color: "#0000aa" },
+          { id: "2", name: "Winter", color: "#aa0000" },
         ],
         { tagIds: ["1", "2"] },
         named,
