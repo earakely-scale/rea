@@ -6,7 +6,14 @@ import {
 } from "../../../tests/fixtures/analysisView.js";
 import {
   CLEARED_THEN_OMITTED_KEPT_ROWS,
+  DEFAULT_THEN_NUMBERED_ROWS,
   DONE_CLOCK_ROWS,
+  DONE_MICRO_ROWS,
+  NUMBERED_THEN_BLANK_ROWS,
+  OWNER_CLEARED_THEN_NAMED_ROWS,
+  SENT_DELETED_THEN_NUMBERED_ROWS,
+  SENT_IN_ANOTHER_PROJECT_ROWS,
+  OWNER_NAMED_THEN_CLEARED_ROWS,
   DONE_MIXED_ROWS,
   DONE_ZONE_ROWS,
   OMITTED_KEPT_THEN_CLEARED_ROWS,
@@ -179,5 +186,63 @@ describe("writes replay holds as serving does", () => {
     expect(planOf(DONE_MIXED_ROWS, "patch_tasks_by_id")).toMatchObject({
       served: false,
     });
+  });
+});
+
+describe("writes whose calls send different members, alike in replay and serving", () => {
+  it("serves no create numbered when left out after a call that left it out stored a fixed value", () => {
+    const plan = planOf(DEFAULT_THEN_NUMBERED_ROWS, "post_bundles");
+    expect(plan.rules).not.toContainEqual(
+      expect.objectContaining({ field: "order", rule: "sequence" }),
+    );
+    expect(plan).toMatchObject({ served: false });
+  });
+
+  it("confirms an update whose read shows the clock it stamped to the microsecond", () => {
+    expect(planOf(DONE_MICRO_ROWS, "patch_tasks_by_id")).toMatchObject({
+      served: true,
+    });
+  });
+
+  it.each([
+    ["named first", OWNER_NAMED_THEN_CLEARED_ROWS],
+    ["cleared first", OWNER_CLEARED_THEN_NAMED_ROWS],
+  ])(
+    "serves a PUT that names a reference by its member and one that leaves it out and clears it: %s",
+    (_order, rows) => {
+      const plan = planOf(rows, "put_tags_by_id");
+      expect(plan).toMatchObject({ served: true });
+      expect(plan.rules).toContainEqual(
+        expect.objectContaining({
+          field: "owner",
+          rule: "reference",
+          member: "ownerId",
+        }),
+      );
+    },
+  );
+
+  it("serves no create numbered below a value an earlier create sent, which serving counts past", () => {
+    const plan = planOf(SENT_DELETED_THEN_NUMBERED_ROWS, "post_bundles");
+    expect(plan.rules).not.toContainEqual(
+      expect.objectContaining({ field: "order", rule: "sequence" }),
+    );
+    expect(plan).toMatchObject({ served: false });
+  });
+
+  it("serves a create numbered in its own project past what it holds, though another project's create sent more", () => {
+    const plan = planOf(
+      SENT_IN_ANOTHER_PROJECT_ROWS,
+      "post_projects_bundles_by_id",
+    );
+    expect(plan).toMatchObject({ served: true });
+    expect(plan.rules).toContainEqual(
+      expect.objectContaining({
+        field: "order",
+        rule: "sequence",
+        scope: "collection",
+        sent: true,
+      }),
+    );
   });
 });

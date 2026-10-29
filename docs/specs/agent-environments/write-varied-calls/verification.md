@@ -67,6 +67,27 @@ numbers), so their entities carry the creates' answer spellings into later reads
   80 passed; the five MCP schema files 54 passed. The census stays at 694 plans and 398 served, with no plan or view
   changing.
 
+Greptile's review after main `21b19270` was merged in (`467ac78f`) raised three more, fixed:
+
+- A member a call left out and the application stored a fixed value for (`body.defaults`) is no longer turned into a
+  `sequence` with `sent` by a later call that left it out and got the next number.
+- Serving stores an update's clock at a coarser read's precision from the answer's own digits, so an answer to the
+  nanosecond read back to the microsecond keeps its microseconds.
+- A `PUT` that names a `reference` field's entity by its member supplies that field: it is not checked against, or
+  given, the default a `PUT` that left the field out showed, whichever of the two calls came first.
+
+Their tests fail on `467ac78f`, and the reference case with the clearing call first on `7030ca4d`. Gates pass but
+`knip`, whose one finding main `21b19270` reports too; `domain` + `services` 12,046 passed; focused boundaries 82 passed; the five MCP schema files 55 passed. Over the 148 captures, main
+serves 380 writes and this branch 392, with no plan or view changing from `467ac78f`.
+
+Greptile's review of `b56f8924` raised two more on numbered members, fixed: a member a call sent empty (`""`) is no
+longer filled in for a call that leaves it out when a `sequence` with `sent` numbers it; and a later create the
+application numbered at or below a value an earlier create sent (9 sent and deleted, then 2) no longer turns the echo
+into a numbered `sequence`, since serving counts past every value a call sent. Their tests fail on `b56f8924`; gates
+pass but `knip` (main's finding), `domain` + `services` 12,048 passed, and the census is unchanged. Greptile's next
+review found that check counting values sent in other collections, which withheld a create numbered within its own
+collection; the check now counts them in the sequence's scope, and its test fails on `d4922b3d`.
+
 ## Not verified
 
 - No recording round ran with this branch, so its write tasks are not measured.

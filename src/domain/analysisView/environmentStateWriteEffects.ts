@@ -109,6 +109,8 @@ export interface WriteDraft {
   readonly starts: Map<string, number>;
   /** Collections of accepted create calls, used to check late sequence adoption. */
   readonly createCollections: string[];
+  /** The largest integer each echoed field held on an accepted create, which a sequence adopted later must count past. */
+  readonly sentLargest: Map<string, number>;
   /** The collection a create writes into when its own path names no state type: the one its returned id was read under. */
   readonly linked?: string | undefined;
   /** Fields an item action's call found already at the value it sets them to. */
@@ -717,12 +719,16 @@ export const updateEntity = (
         explained,
       ) ||
       // A member calls left out is cleared by every one or by none.
-      defaultsDisagree(explained.body.defaults, { earlier: draft.updates }) ||
-      defaultsDisagree(draft.plan.body?.defaults, {
-        earlier: [],
-        sent: body,
-        after: { ...read, ...after.object },
-      }))
+      // A reference this call or an earlier one showed counts its member as the field's, whichever came first.
+      defaultsDisagree(explained.body.defaults, { earlier: draft.updates }, [
+        ...rules,
+        ...explained.rules,
+      ]) ||
+      defaultsDisagree(
+        draft.plan.body?.defaults,
+        { earlier: [], sent: body, after: { ...read, ...after.object } },
+        [...rules, ...explained.rules],
+      ))
   ) {
     if (!unknown) refuse(draft, step, "unexplained-change");
     return recorded();

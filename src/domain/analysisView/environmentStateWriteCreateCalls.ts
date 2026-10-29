@@ -34,6 +34,11 @@ export interface EarlierEvidence {
   /** The integer the exemplar showed in an unruled field above every value its type held, where a sequence may start. */
   readonly startOf?: (field: string) => number | undefined;
   readonly createCollections?: readonly string[];
+  /** The largest integer an echoed field held on the plan's accepted creates, across the type or in the later call's collection. */
+  readonly sentLargest?: (
+    field: string,
+    scope: "collection" | "type",
+  ) => number | undefined;
   /** How the plan's accepted calls and the type's held entities spelled `&` in each field's slug; absent where none showed one. */
   readonly ampersands?: ReadonlyMap<string, AmpersandSpelling>;
 }
@@ -301,6 +306,8 @@ interface FieldCalls {
   readonly sentBefore: ReadonlySet<string>;
   /** The values the plan's calls sent members it fixes or saw sent empty. */
   readonly pinned: ReadonlyMap<string, JsonValue>;
+  /** Members an earlier call left out and the application stored a fixed value for (`body.defaults`). */
+  readonly defaulted: ReadonlySet<string>;
   readonly required: readonly string[];
   readonly earlier: EarlierEvidence;
 }
@@ -357,10 +364,21 @@ const sentOrNumbered = (
   agree: (held: FieldRule) => FieldRule | undefined,
 ): FieldRule | undefined => {
   const laterSent = Object.hasOwn(calls.later.body, field);
-  if (before.rule === "echo")
-    return after.rule === "sequence" && !laterSent
+  if (before.rule === "echo") {
+    // Serving numbers past every value a call sent, so a later call numbered at or below one cannot be repeated.
+    const numbered = sequenceNumber(ownMember(calls.later.entity, field));
+    const largest =
+      after.rule === "sequence"
+        ? calls.earlier.sentLargest?.(field, after.scope)
+        : undefined;
+    // An earlier call that left the member out stored a fixed value, so the application does not number it.
+    return after.rule === "sequence" &&
+      !laterSent &&
+      !calls.defaulted.has(field) &&
+      (largest === undefined || (numbered !== undefined && numbered > largest))
       ? { ...after, sent: true }
       : undefined;
+  }
   if (before.rule !== "sequence") return undefined;
   if (after.rule === "echo")
     return before.sent === true || !calls.sentBefore.has(field)
@@ -488,6 +506,9 @@ export const mergedCreatePlan = (
       later,
       sentBefore,
       pinned,
+      defaulted: new Set(
+        (plan.body.defaults ?? []).map(({ member }) => member),
+      ),
       required: plan.body.required,
       earlier,
     });

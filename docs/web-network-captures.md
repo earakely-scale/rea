@@ -689,7 +689,8 @@ with a `value` or `absent: true`), and serving replays calls matching them and
 calls asking for fields the checked lines do not show.
 Otherwise the tool is a recorded view
 with reason `envelope-varies`, `fields-differ` or `list-differs`; the other
-reasons are `query-body` (a query `POST`, or one the capture shows only reading), `no-init-recording`,
+reasons are `query-body` (a query `POST`, or one the capture shows only reading),
+`method-replay` (a safe `HEAD`, `OPTIONS` or `TRACE` call), `no-init-recording`,
 `body-unusable`, `no-identity` (an item read without a proved identity),
 `path-varies` (another read under more than one path, as a template with a
 parameter before its end), `query-varies` (another read of one path under
@@ -805,7 +806,10 @@ request stamped, in the rule's format. Members either call sent are accepted, on
 required, and an echoed member a call left out takes the value that call stored
 (`body.defaults`). A member one call sent and stored as sent, and another left
 out and the application numbered one past the others, takes the value a call
-sends, else that number (a `sequence` with `sent`), whichever call came first;
+sends, else that number (a `sequence` with `sent`), whichever call came first,
+unless a call that left it out stored a fixed value (its `body.defaults`) or
+the number a later call was given is not above every value an earlier create
+sent in the sequence's scope (the type, or the later call's collection); an empty value a call sent is not applied to a call that leaves it out;
 a later call that sends it must have stored what it sent, and the next number
 follows the largest value any call took, a deleted entity's included. A member a create sent empty (`""`, `null`, `false`, `[]` or
 `{}`), as a form sends a field left as it was, is not required: a call that
@@ -875,7 +879,8 @@ later call flips back the boolean an earlier one set, when no call found it set
 already), or, for a `PUT`, a
 member it left out that the application cleared to an empty value, which calls
 that leave it out then store (`body.defaults`) as long as every call that left
-it out stored that value, or the plan is
+it out stored that value (a call naming a `reference` field's entity by its
+member does not leave the field out), or the plan is
 `unexplained-change`; an increment, slug, stamp, derived
 value, set or toggle must hold for every call of the tool, and an action is
 served only once a call found what it sets already set, or flipped back what it
